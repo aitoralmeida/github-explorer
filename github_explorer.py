@@ -47,7 +47,7 @@ def build_following_network(targets):
     return G
     
 def build_collaboration_network(targets):
-    G = nx.DiGraph()
+    G = nx.Graph()
     gh = Github(token, per_page=100)
     for target in targets:
         print 'Processing', target
@@ -69,7 +69,7 @@ def build_collaboration_network(targets):
         
 if __name__=='__main__':
     token = get_token()
-    morelab = ['aitoralmeida', 'porduna', 'OscarPDR', 'jonlazaro', 'juansixto', 'memaldi', 'unaguil', 'gomezgoiri', 'edlectrico', 'josubg', 'xPret', 'dipina', 'koldozabaleta', 'joruiz', 'dieguich', 'pcuriel', 'juanarmentia']
+    morelab = ['aitoralmeida', 'porduna', 'OscarPDR', 'jonlazaro', 'juansixto', 'memaldi', 'unaguil', 'gomezgoiri', 'edlectrico', 'josubg', 'xPret', 'dipina', 'koldozabaleta', 'joruiz', 'dieguich', 'pcuriel', 'juanarmentia', 'zstars']
 #    G = build_following_network(morelab)
 #    print len(G.nodes())
 #    print len(G.edges())
