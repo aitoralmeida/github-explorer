@@ -30,7 +30,7 @@ def get_stargazers(user_login):
       
     return stargazers
     
-def build_followers_network(targets):
+def build_following_network(targets):
     G = nx.DiGraph()
     gh = Github(token, per_page=100)
     for target in targets:
@@ -45,14 +45,35 @@ def build_followers_network(targets):
             print 'User does not exists',target
             
     return G
+    
+def build_collaboration_network(targets):
+    G = nx.DiGraph()
+    gh = Github(token, per_page=100)
+    for target in targets:
+        print 'Processing', target
+        try:
+            user = gh.get_user(target)
+            for repo in user.get_repos():
+                collaborators = [c.login for c in repo.get_collaborators()]
+                print 'Repo:', repo.name
+                for i, c in enumerate(collaborators):
+                    for j in range(i+1, len(collaborators)):
+                        G.add_edge(c, collaborators[j])
+        except:
+            print 'User does not exists',target
+            
+    return G
         
 
     
         
 if __name__=='__main__':
     token = get_token()
-    G = build_followers_network(['aitoralmeida', 'porduna', 'OscarPDR', 'jonlazaro', 'juansixto', 'memaldi', 'unaguil', 'gomezgoiri', 'edlectrico', 'josubg'])
-    print len(G.nodes())
-    print len(G.edges())
-    nx.write_gexf(G,'github.gexf')
+    morelab = ['aitoralmeida', 'porduna', 'OscarPDR', 'jonlazaro', 'juansixto', 'memaldi', 'unaguil', 'gomezgoiri', 'edlectrico', 'josubg', 'xPret', 'dipina', 'koldozabaleta', 'joruiz', 'dieguich', 'pcuriel', 'juanarmentia']
+#    G = build_following_network(morelab)
+#    print len(G.nodes())
+#    print len(G.edges())
+#    nx.write_gexf(G,'github-following.gexf')
+    G = build_collaboration_network(morelab)
+    nx.write_gexf(G,'github-collaborators.gexf')
     print 'done'
