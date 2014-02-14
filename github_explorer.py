@@ -14,16 +14,28 @@ def get_token():
     with open('token.txt', 'r') as tokenfile:
         return tokenfile.readline()
         
-def get_repos(user):
+def get_repos_names(user):
     gh = Github(token, per_page=100)
-    repo_names = []
     user = gh.get_user(user)
-    for repo in user.get_repos():
-        repo_names.append(repo.name)
-    
+    repo_names = [repo.name for repo in user.get_repos()]
     return repo_names
+    
+def get_stargazers(user):
+    gh = Github(token, per_page=100)
+    user = gh.get_user(user)
+    stargazers = set()
+    for repo in user.get_repos():
+      for s in repo.get_stargazers():
+          stargazers.add(s)
+      
+    return stargazers
+    
+
+        
+
     
         
 if __name__=='__main__':
     token = get_token()
-    print get_repos('aitoralmeida')
+#   print get_repos_names('aitoralmeida')
+    print get_stargazers('aitoralmeida')
