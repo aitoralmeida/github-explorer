@@ -11,6 +11,7 @@ import networkx as nx
 
 import json
 import operator
+import time
 
 token = '' # https://help.github.com/articles/creating-an-access-token-for-command-line-use/
 
@@ -94,9 +95,9 @@ def crawl_github(seeds):
     gh = Github(token, per_page=100)
     
     # Priority for the seed users
-    INITIAL_PRIORITY = 10000
+    INITIAL_PRIORITY = 50000
     # Minimun priority to continue mining
-    MIN_PRIORITY = 5000
+    MIN_PRIORITY = 7000
     
     # Discovered collaborations
     collaborations = []
@@ -134,8 +135,21 @@ def crawl_github(seeds):
             crawled_users.append(user_to_process)
                         
         print '- Processing user %s with priority %s' % (user_to_process, priority)
+        
+        repeat_user = True
+        while (repeat_user): # If time limit exceded wait and repeat
+            try:
+                user = gh.get_user(user_to_process)
+                repeat_user = False
+            except github.GithubException as e:
+                print e
+                if 'rate limit exceeded' in e.message:
+                    time.sleep(10 * 60)
+                    repeat_user = True
+                else:
+                    repeat_user = False
             
-        user = gh.get_user(user_to_process)
+                
         for repo in user.get_repos():
             repo_name = repo.full_name
             if repo_name in crawled_repos:
@@ -143,25 +157,33 @@ def crawl_github(seeds):
             else:
                 print '  - Processing repo %s' % repo_name
                 crawled_repos.append(repo_name)              
-
-                try:
-                    # queue priority is updated using the repo stargazers number
-                    total_stargazers = repo.stargazers_count
-                    # projects with 0 stargazers are not considered relevant
-                    if total_stargazers > 0: 
-                        contributors = [c.login for c in repo.get_contributors()]
-                        if len(contributors) > 1:
-                            collaborations.append(contributors)                        
-                            for contributor in contributors:
-                                if not contributor in crawled_users:
-                                    if contributor in queue:
-                                        queue[contributor] += total_stargazers
-                                    else:
-                                        queue[contributor] = total_stargazers
-                except github.GithubException as e:
-                    print e
-                except TypeError as e:
-                    print e
+                repeat_repo = True
+                while (repeat_repo): # If time limit exceded wait and repeat
+                    try:
+                        # queue priority is updated using the repo stargazers number
+                        total_stargazers = repo.stargazers_count
+                        # projects with 0 stargazers are not considered relevant
+                        if total_stargazers > 0: 
+                            contributors = [c.login for c in repo.get_contributors()]
+                            if len(contributors) > 1:
+                                collaborations.append(contributors)                        
+                                for contributor in contributors:
+                                    if not contributor in crawled_users:
+                                        if contributor in queue:
+                                            queue[contributor] += total_stargazers
+                                        else:
+                                            queue[contributor] = total_stargazers
+                        repeat_repo = False
+                    except github.GithubException as e:
+                        print e
+                        if 'rate limit exceeded' in e.message:
+                            time.sleep(10 * 60)
+                            repeat_user = True
+                        else:
+                            repeat_user = False
+                    except TypeError as e:
+                        print e
+            
 
                     
                             
