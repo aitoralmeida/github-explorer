@@ -148,12 +148,10 @@ def crawl_github(seeds):
                     # queue priority is updated using the repo stargazers number
                     stargazers = [s for s in repo.get_stargazers()]
                     total_stargazers = len(stargazers)
-                    # if the project has no stargazers is its user are not added
-                    # to the queue, but the collaborations are taken into account
-                    contributors = [c.login for c in repo.get_contributors()]
-                    if len(contributors) > 1:
-                        collaborations.append(contributors)
-                        if total_stargazers > 0: 
+                    if total_stargazers > 0: 
+                        contributors = [c.login for c in repo.get_contributors()]
+                        if len(contributors) > 1:
+                            collaborations.append(contributors)                        
                             for contributor in contributors:
                                 if not contributor in crawled_users:
                                     if contributor in queue:
@@ -179,6 +177,7 @@ def crawl_github(seeds):
 # Build a networkx graph using the crawled collaborations
 def build_network(collaborations):
     G = nx.Graph()
+    print 'Building network...'
     for collaboration in collaborations:
         for i, c1 in enumerate(collaboration):
             for j in range(i+1, len(collaboration)):
@@ -188,6 +187,7 @@ def build_network(collaborations):
                 else:
                     G.add_edge(c1, c2, weight = 1)
                     
+    print 'Writing gexf...'
     nx.write_gexf(G, open('collaborations.gexf', 'w'))
 
           
