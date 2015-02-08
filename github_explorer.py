@@ -97,7 +97,9 @@ def crawl_github(seeds):
     # Priority for the seed users
     INITIAL_PRIORITY = 50000
     # Minimun priority to continue mining
-    MIN_PRIORITY = 7000
+    MIN_PRIORITY = 9000
+    # Minimun stargazers for the project to be taken into account
+    MIN_STARGAZERS = 5000
     
     # Discovered collaborations
     collaborations = []
@@ -137,13 +139,16 @@ def crawl_github(seeds):
         print '- Processing user %s with priority %s' % (user_to_process, priority)
         
         repeat_user = True
-        while (repeat_user): # If time limit exceded wait and repeat
+        while (repeat_user): # If rate limit exceded wait and repeat
             try:
                 user = gh.get_user(user_to_process)
                 repeat_user = False
             except github.GithubException as e:
                 print e
                 if 'rate limit exceeded' in e.message:
+                    print 'Saving current crawl...'
+                    _save_status(collaborations, crawled_repos, crawled_users, queue)
+                    print 'saved'
                     time.sleep(10 * 60)
                     repeat_user = True
                 else:
@@ -158,12 +163,12 @@ def crawl_github(seeds):
                 print '  - Processing repo %s' % repo_name
                 crawled_repos.append(repo_name)              
                 repeat_repo = True
-                while (repeat_repo): # If time limit exceded wait and repeat
+                while (repeat_repo): # If rate limit exceded wait and repeat
                     try:
                         # queue priority is updated using the repo stargazers number
                         total_stargazers = repo.stargazers_count
                         # projects with 0 stargazers are not considered relevant
-                        if total_stargazers > 0: 
+                        if total_stargazers > MIN_STARGAZERS: 
                             contributors = [c.login for c in repo.get_contributors()]
                             if len(contributors) > 1:
                                 collaborations.append(contributors)                        
@@ -177,6 +182,9 @@ def crawl_github(seeds):
                     except github.GithubException as e:
                         print e
                         if 'rate limit exceeded' in e.message:
+                            print 'Saving current crawl...'
+                            _save_status(collaborations, crawled_repos, crawled_users, queue)
+                            print 'saved'
                             time.sleep(10 * 60)
                             repeat_user = True
                         else:
@@ -194,10 +202,11 @@ def crawl_github(seeds):
             print 'saved'
                             
     return collaborations
+    
                         
 
 # Build a networkx graph using the crawled collaborations
-def build_network(collaborations):
+def build_network_user_collaborations(collaborations):
     G = nx.Graph()
     print 'Building network...'
     for collaboration in collaborations:
@@ -212,6 +221,57 @@ def build_network(collaborations):
     print 'Graph created. %s nodes & %s edges' % (len(G.nodes()), len(G.edges()))
     print 'Writing gexf...'
     nx.write_gexf(G, open('collaborations.gexf', 'w'))
+    
+def get_project_colaborations(users):
+    
+    # Minimun stargazers for the project to be taken into account
+    MIN_STARGAZERS = 9000    
+    
+    collaborations = {}
+    
+    gh = Github(token, per_page=100)
+    for user_to_process in users:
+        print '- Processed projects %s' % (len(collaborations))
+        print '- Processing user %s' % (user_to_process)
+        
+        try:
+            user = gh.get_user(user_to_process)
+              
+            for repo in user.get_repos():
+                total_stargazers = repo.stargazers_count
+                if total_stargazers > MIN_STARGAZERS:
+                    repo_name = repo.full_name
+                    print ' - Processing repo %s' % (repo_name)
+                    contributors = [c.login for c in repo.get_contributors()]
+                    if len(contributors) > 1:
+                        collaborations[repo_name] = contributors
+
+        except github.GithubException as e:
+            print e
+        except TypeError as e:
+            print e
+    
+    return collaborations
+    
+def build_network_project_collaborations(collaborations):
+    G = nx.Graph()
+    print 'Building network...'
+    projects = collaborations.keys()
+    for i, project_1 in enumerate(projects):
+        contributors1 = set(collaborations[project_1])
+        for j in range(i+1, len(projects)):
+            project_2 = projects[j]
+            contributors2 = set(collaborations[project_2])
+            common_contributors = contributors1 & contributors2
+            if len(common_contributors) > 0:
+                if G.has_edge(project_1, project_2):
+                    G[project_1][project_2]['weight'] += len(common_contributors)
+                else:
+                    G.add_edge(project_1, project_2, weight = len(common_contributors))
+                    
+    print 'Graph created. %s nodes & %s edges' % (len(G.nodes()), len(G.edges()))
+    print 'Writing gexf...'
+    nx.write_gexf(G, open('collaborations_projects.gexf', 'w'))
 
           
         
@@ -231,9 +291,9 @@ if __name__ == '__main__':
 #    G = build_collaboration_network(morelab)
 #    nx.write_gexf(G,'github-collaborators.gexf')
     
-    # crawl github to build the collaboration network
-    # The users of the projects with more than 9000 stars
-    #https://github.com/search?p=1&q=stars%3A%3E9000&ref=searchresults&type=Repositories&utf8=%E2%9C%93
+#    # crawl github to build the collaboration network
+#    # The users of the projects with more than 9000 stars
+#    #https://github.com/search?p=1&q=stars%3A%3E9000&ref=searchresults&type=Repositories&utf8=%E2%9C%93
     crawl_seed = ['twbs', 'vhf', 'angular', 
                   'joyent', 'mbostock', 'jquery', 'FortAwesome', 'h5bp', 'rails', 
                   'bartaz', 'meteor', 'github', 'robbyrussell', 'Homebrew', 
@@ -252,8 +312,12 @@ if __name__ == '__main__':
                   'ajaxorg', 'Leaflet', 'symfony', 'vinta', 'interagent', 'ansible', 
                   'jquery', 't4t5', 'rust-lang', 'balderdashy', 'twitter', 'bcit-ci', 
                   'FezVrasta', 'designmodo', 'kenwheeler', 'gruntjs'] 
-    collaborations = crawl_github(crawl_seed)
-    json.dump(collaborations, open('collaborations.json','w'))
+#    collaborations = crawl_github(crawl_seed)
+#    json.dump(collaborations, open('collaborations.json','w'))
+
+    # Get the collaborations of projects with a min of stargazers
+    collaborations = get_project_colaborations(crawl_seed)
+    json.dump(collaborations, open('collaborations_projects.json','w'))
     
     
     print 'done'
