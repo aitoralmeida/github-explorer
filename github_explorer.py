@@ -142,13 +142,12 @@ def crawl_github(seeds):
                 continue
             else:
                 print '  - Processing repo %s' % repo_name
-                crawled_repos.append(repo_name)
-                
-                # queue priority is updated using the repo stargazers number
-                stargazers = [s for s in repo.get_stargazers()]
-                total_stargazers = len(stargazers)
-                
+                crawled_repos.append(repo_name)              
+
                 try:
+                    # queue priority is updated using the repo stargazers number
+                    stargazers = [s for s in repo.get_stargazers()]
+                    total_stargazers = len(stargazers)
                     # if the project has no stargazers is its user are not added
                     # to the queue, but the collaborations are taken into account
                     contributors = [c.login for c in repo.get_contributors()]
@@ -165,6 +164,7 @@ def crawl_github(seeds):
                     print e
                 except TypeError as e:
                     print e
+
                     
                             
         tot += 1
