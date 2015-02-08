@@ -147,6 +147,7 @@ def crawl_github(seeds):
                 try:
                     # queue priority is updated using the repo stargazers number
                     total_stargazers = repo.stargazers_count
+                    # projects with 0 stargazers are not considered relevant
                     if total_stargazers > 0: 
                         contributors = [c.login for c in repo.get_contributors()]
                         if len(contributors) > 1:
@@ -186,6 +187,7 @@ def build_network(collaborations):
                 else:
                     G.add_edge(c1, c2, weight = 1)
                     
+    print 'Graph created. %s nodes & %s edges' % (len(G.nodes()), len(G.edges()))
     print 'Writing gexf...'
     nx.write_gexf(G, open('collaborations.gexf', 'w'))
 
