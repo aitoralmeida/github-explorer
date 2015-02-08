@@ -146,8 +146,7 @@ def crawl_github(seeds):
 
                 try:
                     # queue priority is updated using the repo stargazers number
-                    stargazers = [s for s in repo.get_stargazers()]
-                    total_stargazers = len(stargazers)
+                    total_stargazers = repo.stargazers_count
                     if total_stargazers > 0: 
                         contributors = [c.login for c in repo.get_contributors()]
                         if len(contributors) > 1:
